@@ -14,7 +14,6 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,37 +25,31 @@ jobs:
           java-version: "17"
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: "8.9"
+
+      - name: Prepare Android web assets
+        run: |
+          rm -rf android/app/src/main/assets
+          mkdir -p android/app/src/main/assets
+          cp index.html style.css app.js config.js android/app/src/main/assets/
 
       - name: Build release APK
-        id: build
         working-directory: android
-        shell: bash
-        run: |
-          set +e
-          gradle :app:assembleRelease --no-daemon --stacktrace --info 2>&1 | tee ../apk-build.log
-          status=${PIPESTATUS[0]}
-          exit $status
+        run: gradle :app:assembleRelease --no-daemon --stacktrace
 
       - name: Copy APK to repository download folder
-        if: success()
         run: |
           mkdir -p download
           cp android/app/build/outputs/apk/release/app-release.apk download/HomeConnect.apk
           sha256sum download/HomeConnect.apk > download/HomeConnect.apk.sha256
 
-      - name: Save build log
-        if: always()
-        run: |
-          mkdir -p diagnostics
-          cp apk-build.log diagnostics/apk-build.log || true
-
-      - name: Commit build output
-        if: always()
+      - name: Commit APK into repository
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add download/HomeConnect.apk download/HomeConnect.apk.sha256 diagnostics/apk-build.log
+          git add download/HomeConnect.apk download/HomeConnect.apk.sha256
           git diff --cached --quiet && exit 0
           git commit -m "Build HomeConnect Android APK"
           git push
