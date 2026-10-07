@@ -1,89 +1,46 @@
 name: Build HomeConnect APK
 
 on:
-  push:
-    branches:
-      - main
-    paths-ignore:
-      - "download/**"
   workflow_dispatch:
 
 permissions:
   contents: write
-  issues: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Java
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
-      - name: Set up Gradle
-        uses: gradle/gradle-build-action@v3
+      - uses: gradle/gradle-build-action@v3
         with:
           gradle-version: "8.9"
 
-      - name: Prepare Android web assets
+      - name: Prepare web assets
         run: |
           rm -rf android/app/src/main/assets
           mkdir -p android/app/src/main/assets
           cp index.html style.css app.js config.js android/app/src/main/assets/
 
-      - name: Build release APK
-        id: build
+      - name: Build APK
         working-directory: android
-        continue-on-error: true
-        shell: bash
-        run: |
-          set +e
-          gradle :app:assembleRelease --no-daemon --stacktrace 2>&1 | tee ../apk-build.log
-          echo ${PIPESTATUS[0]} > ../apk-build-exit-code.txt
+        run: gradle :app:assembleRelease --no-daemon --stacktrace
 
-      - name: Report Android build diagnostics
-        if: steps.build.outcome == 'failure'
-        uses: actions/github-script@v9
-        env:
-          BUILD_LOG: ${{ github.workspace }}/apk-build.log
-        with:
-          script: |
-            const fs = require("fs");
-            const log = fs.existsSync(process.env.BUILD_LOG)
-              ? fs.readFileSync(process.env.BUILD_LOG, "utf8")
-              : "Build log was not generated.";
-            const body = [
-              "Automated HomeConnect APK build failed.",
-              "",
-              "```text",
-              log.slice(-50000),
-              "```"
-            ].join("\n");
-            await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: "APK build diagnostics - " + context.sha.slice(0, 7),
-              body
-            });
-
-      - name: Copy APK to repository download folder
+      - name: Put APK in download
         run: |
           mkdir -p download
-          APK_PATH="$(find android/app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -n 1)"
-          test -n "$APK_PATH"
-          cp "$APK_PATH" download/HomeConnect.apk
+          cp android/app/build/outputs/apk/release/app-release.apk download/HomeConnect.apk
           sha256sum download/HomeConnect.apk > download/HomeConnect.apk.sha256
 
-      - name: Commit APK into repository
+      - name: Commit APK
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add download/HomeConnect.apk download/HomeConnect.apk.sha256
-          git diff --cached --quiet && exit 0
-          git commit -m "Build HomeConnect Android APK"
+          git diff --cached --quiet || git commit -m "Build HomeConnect APK"
           git push
