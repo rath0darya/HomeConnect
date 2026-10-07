@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#08090c">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>HomeConnect</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <section id="loginView" class="login-view">
+      <div class="login-card glass">
+        <div class="brand-mark">HC</div>
+        <div class="eyebrow">PRIVATE FAMILY SPACE</div>
+        <h1>HomeConnect</h1>
+        <p class="muted">A private, direct family calling space.</p>
+        <form id="loginForm">
+          <label for="password">Access password</label>
+          <div class="password-row">
+            <input id="password" type="password" autocomplete="current-password" placeholder="Enter password" required>
+            <button id="showPassword" type="button" class="icon-button" aria-label="Show password">◉</button>
+          </div>
+          <button class="primary-button wide" type="submit">Continue</button>
+          <p id="loginError" class="error-text"></p>
+        </form>
+        <div class="privacy-note">No account creation • No feed • No advertising • Media is WebRTC encrypted</div>
+      </div>
+    </section>
+
+    <section id="homeView" class="home-view hidden">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mini">HC</div>
+          <div>
+            <strong>HomeConnect</strong>
+            <span>Family</span>
+          </div>
+        </div>
+        <div class="top-actions">
+          <div id="connectionPill" class="status-pill offline"><i></i><span>Offline</span></div>
+          <button id="logoutButton" class="icon-button" title="Lock">⌑</button>
+        </div>
+      </header>
+
+      <main class="feed">
+        <section class="hero-card glass">
+          <div class="hero-copy">
+            <div class="eyebrow">PRIVATE FAMILY NETWORK</div>
+            <h2>Stay close.<br><span>Call instantly.</span></h2>
+            <p>Direct audio and video calling with a clean social-app style interface.</p>
+          </div>
+          <div class="avatar-orbit">
+            <div class="orbit orbit-one"></div>
+            <div class="orbit orbit-two"></div>
+            <div class="family-avatar">HC</div>
+          </div>
+        </section>
+
+        <section class="profile-row">
+          <div class="profile-avatar" id="myAvatar">Y</div>
+          <div class="profile-info">
+            <strong id="myName">You</strong>
+            <span id="myRole">Private member</span>
+          </div>
+          <div id="peerBadge" class="peer-badge offline">Family offline</div>
+        </section>
+
+        <section class="call-card glass">
+          <div class="call-card-head">
+            <div>
+              <div class="eyebrow">FAMILY CALL</div>
+              <h3 id="callTitle">Ready when you are</h3>
+            </div>
+            <div id="qualityBadge" class="quality-badge">HD</div>
+          </div>
+
+          <div class="video-stage">
+            <video id="remoteVideo" class="remote-video" autoplay playsinline></video>
+            <div id="remotePlaceholder" class="remote-placeholder">
+              <div class="big-avatar">F</div>
+              <strong id="remoteName">Family</strong>
+              <span id="callStatus">Waiting for family member</span>
+            </div>
+            <video id="localVideo" class="local-video" autoplay muted playsinline></video>
+            <div id="videoOverlay" class="video-overlay hidden">
+              <span id="overlayText">Connecting…</span>
+            </div>
+          </div>
+
+          <div class="call-actions">
+            <button id="startCallButton" class="primary-button call-main">Start Call</button>
+            <button id="endCallButton" class="danger-button call-main" disabled>End Call</button>
+          </div>
+
+          <div class="media-actions">
+            <button id="micButton" class="round-control" disabled>Mic</button>
+            <button id="cameraButton" class="round-control" disabled>Cam</button>
+            <button id="speakerButton" class="round-control" disabled>Speaker</button>
+          </div>
+
+          <p id="appStatus" class="status-message">Connecting…</p>
+        </section>
+
+        <section class="feature-grid">
+          <article class="feature-card glass"><b>01</b><strong>Private</strong><span>No public profiles or social feed.</span></article>
+          <article class="feature-card glass"><b>02</b><strong>Encrypted</strong><span>WebRTC media uses encrypted transport.</span></article>
+          <article class="feature-card glass"><b>03</b><strong>Adaptive</strong><span>Quality adapts to device and network.</span></article>
+        </section>
+      </main>
+
+      <nav class="bottom-nav">
+        <button class="nav-item active"><span>⌂</span><small>Home</small></button>
+        <button class="nav-item" id="callNavButton"><span>◉</span><small>Call</small></button>
+        <button class="nav-item" id="lockNavButton"><span>⌑</span><small>Lock</small></button>
+      </nav>
+    </section>
+
+    <div id="incomingModal" class="modal hidden">
+      <div class="incoming-card glass">
+        <div class="incoming-avatar">F</div>
+        <div class="eyebrow">INCOMING CALL</div>
+        <h2 id="incomingName">Family</h2>
+        <p>Someone in your family is calling you.</p>
+        <div class="incoming-actions">
+          <button id="declineButton" class="danger-button">Decline</button>
+          <button id="answerButton" class="primary-button">Answer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
