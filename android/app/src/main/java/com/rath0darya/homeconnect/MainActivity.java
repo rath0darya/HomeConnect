@@ -156,13 +156,23 @@ public class MainActivity extends Activity {
             String asset = requestPath.substring(1);
 
             try (InputStream input = getAssets().open(asset)) {
-                byte[] data = input.readAllBytes();
+                byte[] data = readAll(input);
                 String contentType = "text/html; charset=utf-8";
                 if (asset.endsWith(".css")) contentType = "text/css; charset=utf-8";
                 if (asset.endsWith(".js")) contentType = "application/javascript; charset=utf-8";
                 writeResponse(s, 200, contentType, data);
             }
         } catch (Exception ignored) {}
+    }
+
+    private byte[] readAll(InputStream input) throws IOException {
+        java.io.ByteArrayOutputStream output = new java.io.ByteArrayOutputStream();
+        byte[] buffer = new byte[8192];
+        int count;
+        while ((count = input.read(buffer)) != -1) {
+            output.write(buffer, 0, count);
+        }
+        return output.toByteArray();
     }
 
     private void writeResponse(Socket socket, int status, String contentType, byte[] body) throws IOException {
