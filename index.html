@@ -3,86 +3,175 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#08090d">
-  <meta name="description" content="HomeConnect — a private family communication space.">
-  <link rel="manifest" href="manifest.webmanifest">
-  <link rel="apple-touch-icon" href="icon.svg">
-  <link rel="stylesheet" href="style.css">
+  <meta name="theme-color" content="#07080b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
   <title>HomeConnect</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="app-shell">
-    <header class="topbar">
-      <a class="brand" href="#" aria-label="HomeConnect home">
-        <span class="brand-icon">HC</span>
-        <span class="brand-copy"><b>HomeConnect</b><small>Private family space</small></span>
-      </a>
-      <button id="themeButton" class="circle-button" type="button" aria-label="Toggle theme">☼</button>
-    </header>
+  <div id="app">
+    <section id="loginView" class="login-view">
+      <div class="login-card glass">
+        <div class="brand-mark">HC</div>
+        <div class="eyebrow">PRIVATE FAMILY SPACE</div>
+        <h1>HomeConnect</h1>
+        <p class="muted">A private family space designed for phones first.</p>
 
-    <main>
-      <section class="hero card">
-        <div class="hero-content">
-          <span class="eyebrow">YOUR FAMILY • YOUR SPACE</span>
-          <h1>Stay close,<br><em>wherever you are.</em></h1>
-          <p>One calm, private place for family updates, quick calls, photos and the little moments that matter.</p>
-          <div class="hero-actions">
-            <button id="familyButton" class="button primary" type="button">Open family space</button>
-            <a class="button secondary" href="#about">Learn more</a>
+        <form id="loginForm" autocomplete="off">
+          <label for="password">Access password</label>
+          <div class="password-row">
+            <input id="password" type="password" autocomplete="off" placeholder="Enter password" required>
+            <button id="showPassword" type="button" class="icon-button" aria-label="Show password">◉</button>
+          </div>
+          <button class="primary-button wide" type="submit">Continue</button>
+          <p id="loginError" class="error-text" role="alert"></p>
+        </form>
+
+        <div class="privacy-note">
+          No Firebase • No database • No account signup • No advertising
+        </div>
+      </div>
+    </section>
+
+    <section id="homeView" class="home-view hidden">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mini">HC</div>
+          <div>
+            <strong>HomeConnect</strong>
+            <span>Family</span>
           </div>
         </div>
-        <div class="hero-art" aria-hidden="true">
-          <div class="halo halo-a"></div><div class="halo halo-b"></div>
-          <div class="home-orb"><span>HC</span></div>
-          <div class="mini-avatar one">M</div><div class="mini-avatar two">F</div><div class="mini-avatar three">♥</div>
+
+        <div class="top-actions">
+          <span class="status-pill online"><i></i><span>Private</span></span>
+          <button id="logoutButton" class="icon-button" type="button" aria-label="Lock">⌑</button>
         </div>
-      </section>
+      </header>
 
-      <section id="family" class="section">
-        <div class="section-heading"><div><span class="eyebrow">FAMILY SPACE</span><h2>Everything feels closer.</h2></div><span id="onlineState" class="status-chip"><i></i>Private</span></div>
-        <div class="quick-grid">
-          <button class="quick-card card" data-action="call"><span class="quick-icon">⌕</span><b>Family call</b><small>Start a call from your device</small></button>
-          <button class="quick-card card" data-action="message"><span class="quick-icon">✦</span><b>Family note</b><small>Write something everyone can see</small></button>
-          <button class="quick-card card" data-action="photo"><span class="quick-icon">＋</span><b>Share a moment</b><small>Choose a photo from your device</small></button>
-        </div>
-      </section>
+      <main class="feed">
+        <section class="hero-card glass">
+          <div class="hero-copy">
+            <div class="eyebrow">YOUR FAMILY SPACE</div>
+            <h2>Stay close.<br><span>Share moments.</span></h2>
+            <p>A responsive, app-style family home that feels natural on Android, iPhone and desktop.</p>
+            <button id="heroCallButton" class="primary-button hero-button" type="button">Open Call</button>
+          </div>
 
-      <section class="section">
-        <div class="section-heading"><div><span class="eyebrow">MOMENTS</span><h2>Recent family notes</h2></div></div>
-        <div id="feed" class="feed"></div>
-      </section>
+          <div class="avatar-orbit" aria-hidden="true">
+            <div class="orbit orbit-one"></div>
+            <div class="orbit orbit-two"></div>
+            <div class="family-avatar">HC</div>
+          </div>
+        </section>
 
-      <section id="about" class="section about card">
-        <span class="eyebrow">HOME BY DESIGN</span>
-        <h2>Simple. Private. Responsive.</h2>
-        <p>HomeConnect is built as a lightweight static website. It has no Firebase, no database, no advertising layer and no account-registration flow.</p>
-        <div class="feature-row">
-          <div><b>01</b><strong>Mobile first</strong><span>Designed for Android, iPhone and desktop browsers.</span></div>
-          <div><b>02</b><strong>Fast</strong><span>Only the files needed for the interface are loaded.</span></div>
-          <div><b>03</b><strong>Installable</strong><span>Works as a PWA when served from HTTPS.</span></div>
-        </div>
-      </section>
-    </main>
+        <section class="profile-row">
+          <div class="profile-avatar" id="myAvatar">Y</div>
+          <div class="profile-info">
+            <strong id="myName">You</strong>
+            <span id="myRole">Family member</span>
+          </div>
+          <div class="peer-badge online">Private space</div>
+        </section>
 
-    <nav class="bottom-nav" aria-label="Main navigation">
-      <a class="active" href="#"><span>⌂</span><small>Home</small></a>
-      <a href="#family"><span>◉</span><small>Family</small></a>
-      <a href="#about"><span>i</span><small>About</small></a>
-    </nav>
+        <section class="section-heading">
+          <div>
+            <div class="eyebrow">FAMILY</div>
+            <h3>Recent moments</h3>
+          </div>
+          <span class="tiny-label">Just now</span>
+        </section>
+
+        <section class="story-strip">
+          <button class="story add-story" type="button" id="storyAdd">
+            <span>+</span><small>Add</small>
+          </button>
+          <button class="story" type="button"><span class="story-avatar a1">F</span><small>Family</small></button>
+          <button class="story" type="button"><span class="story-avatar a2">M</span><small>Mom</small></button>
+          <button class="story" type="button"><span class="story-avatar a3">D</span><small>Dad</small></button>
+          <button class="story" type="button"><span class="story-avatar a4">S</span><small>Sister</small></button>
+        </section>
+
+        <section class="post-card glass">
+          <div class="post-head">
+            <div class="post-avatar">HC</div>
+            <div>
+              <strong>HomeConnect</strong>
+              <span>Private family space · now</span>
+            </div>
+            <button class="more-button" type="button" aria-label="More">•••</button>
+          </div>
+
+          <div class="post-body">
+            <h3>Family first.</h3>
+            <p>Everything here is designed to stay simple: open the app, check in, and connect.</p>
+          </div>
+
+          <div class="post-actions">
+            <button type="button" class="post-action" id="likeButton">♡ <span>Like</span></button>
+            <button type="button" class="post-action" id="commentButton">◌ <span>Comment</span></button>
+            <button type="button" class="post-action" id="shareButton">↗ <span>Share</span></button>
+          </div>
+        </section>
+
+        <section id="callSection" class="call-card glass">
+          <div class="call-card-head">
+            <div>
+              <div class="eyebrow">DEVICE CALL</div>
+              <h3>Camera & microphone</h3>
+            </div>
+            <div id="qualityBadge" class="quality-badge">LOCAL</div>
+          </div>
+
+          <div class="video-stage">
+            <video id="localVideo" class="remote-video" autoplay muted playsinline></video>
+            <div id="remotePlaceholder" class="remote-placeholder">
+              <div class="big-avatar">HC</div>
+              <strong>HomeConnect</strong>
+              <span id="callStatus">No call session is active</span>
+            </div>
+          </div>
+
+          <div class="call-actions">
+            <button id="startCallButton" class="primary-button call-main" type="button">Start Call</button>
+            <button id="endCallButton" class="danger-button call-main" type="button" disabled>End</button>
+          </div>
+
+          <div class="media-actions">
+            <button id="micButton" class="round-control" type="button" disabled>Mic</button>
+            <button id="cameraButton" class="round-control" type="button" disabled>Cam</button>
+          </div>
+
+          <p id="appStatus" class="status-message">Ready.</p>
+        </section>
+
+        <section class="section-heading">
+          <div>
+            <div class="eyebrow">PRIVATE BY DESIGN</div>
+            <h3>HomeConnect features</h3>
+          </div>
+        </section>
+
+        <section class="feature-grid">
+          <article class="feature-card glass"><b>01</b><strong>App-like</strong><span>Responsive social-platform style layout with touch-friendly controls.</span></article>
+          <article class="feature-card glass"><b>02</b><strong>No database</strong><span>This website does not save posts, messages, media or call recordings.</span></article>
+          <article class="feature-card glass"><b>03</b><strong>Web-ready</strong><span>Works as a static website on GitHub Pages or any HTTPS static host.</span></article>
+        </section>
+      </main>
+
+      <nav class="bottom-nav" aria-label="Main navigation">
+        <button class="nav-item active" type="button" data-target="home"><span>⌂</span><small>Home</small></button>
+        <button class="nav-item" type="button" data-target="call"><span>◉</span><small>Call</small></button>
+        <button class="nav-item" type="button" id="lockNavButton"><span>⌑</span><small>Lock</small></button>
+      </nav>
+    </section>
+
+    <div id="toast" class="toast hidden" role="status"></div>
   </div>
 
-  <dialog id="noteDialog" class="dialog">
-    <form method="dialog" class="dialog-card">
-      <button class="dialog-close" value="cancel" aria-label="Close">×</button>
-      <span class="eyebrow">FAMILY NOTE</span>
-      <h2>Write a little message</h2>
-      <textarea id="noteText" maxlength="280" placeholder="What's on your mind?"></textarea>
-      <button id="saveNote" class="button primary" value="default">Add note</button>
-    </form>
-  </dialog>
-
-  <input id="photoInput" type="file" accept="image/*" hidden>
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="config.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
