@@ -1,61 +1,51 @@
 # HomeConnect
 
-Private family audio/video calling app with a social-media-style responsive interface.
+A private, mobile-first family website with a social-media-style interface.
 
-## Architecture
+## Static-only architecture
 
+HomeConnect is intentionally **website only**.
+
+- No APK build.
 - No Firebase.
 - No Firestore.
-- No application database.
+- No Node.js server.
+- No API.
+- No application backend.
+- No database.
+- No cloud media storage.
 - No call recording.
-- No media storage.
-- Audio/video uses WebRTC peer-to-peer transport.
-- The WebSocket service is only for authentication and WebRTC signaling.
-- WebRTC media is encrypted by the browser using DTLS-SRTP.
+- Responsive on Android, iPhone and desktop.
+- Local notes, theme and UI state use browser localStorage.
 
-A signaling endpoint is technically required for Internet WebRTC rendezvous. There is no way to establish an arbitrary Internet-to-Internet WebRTC session with literally zero rendezvous/signaling infrastructure.
+## Important calling limitation
 
-## Passwords
+A real cross-device Internet audio/video call cannot work with literally no signaling/rendezvous service. WebRTC needs a way for the two devices to discover and exchange connection information.
 
-Default credentials are:
+Because this version is explicitly **backend-free**, the Call area is a local camera/microphone preview only. It does not pretend that a remote call is working when there is no signaling infrastructure.
 
-- Admin: `RuhiSinghRajput`
-- Family: `Praveen@8897`
+## Run locally
 
-For deployment, override them with environment variables:
+Open index.html in a browser.
 
-```text
-HOMECONNECT_ADMIN_PASSWORD=...
-HOMECONNECT_FAMILY_PASSWORD=...
-```
+For camera/microphone access, use an HTTPS static host or localhost.
 
-## Web
+## Deploy as a static website
 
-```bash
-npm install
-npm start
-```
+The repository contains only static web assets:
 
-Open:
+- index.html
+- style.css
+- app.js
+- config.js
+- manifest.webmanifest
+- sw.js
+- icon.svg
 
-```text
-http://127.0.0.1:8080
-```
+It can be hosted on GitHub Pages or another static HTTPS host.
 
-For Internet camera/microphone access, publish the site through HTTPS and expose the WebSocket endpoint as WSS.
+## Password gate
 
-## Android
+The two access passwords are checked locally in the browser. This is only a UI access gate, not server-side authentication. Anyone who can inspect the website source can ultimately recover or bypass a client-side password.
 
-The `android/` directory is an Android WebView shell using AndroidX WebKit's secure asset loader. The same responsive HomeConnect interface is packaged into the APK.
-
-The APK build is automated by GitHub Actions and is copied into:
-
-```text
-download/HomeConnect.apk
-```
-
-The APK needs a secure WSS signaling endpoint in `config.js` for Internet calling. Leaving `signalingUrl` empty only works when the web app itself is served by the HomeConnect server.
-
-## Important limitation
-
-A completely backend-free Internet video-call system is not technically possible because peers need a rendezvous/signaling mechanism. HomeConnect deliberately keeps this mechanism minimal: it does not carry or store the audio/video media.
+For real security, server-side authentication would be required, which is deliberately outside this static-only version.
