@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: write
+  issues: write
 
 jobs:
   build:
@@ -36,8 +37,39 @@ jobs:
           cp index.html style.css app.js config.js android/app/src/main/assets/
 
       - name: Build release APK
+        id: build
         working-directory: android
-        run: gradle :app:assembleRelease --no-daemon --stacktrace
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+          gradle :app:assembleRelease --no-daemon --stacktrace 2>&1 | tee ../apk-build.log
+          echo ${PIPESTATUS[0]} > ../apk-build-exit-code.txt
+
+      - name: Report Android build diagnostics
+        if: steps.build.outcome == 'failure'
+        uses: actions/github-script@v9
+        env:
+          BUILD_LOG: ${{ github.workspace }}/apk-build.log
+        with:
+          script: |
+            const fs = require("fs");
+            const log = fs.existsSync(process.env.BUILD_LOG)
+              ? fs.readFileSync(process.env.BUILD_LOG, "utf8")
+              : "Build log was not generated.";
+            const body = [
+              "Automated HomeConnect APK build failed.",
+              "",
+              "```text",
+              log.slice(-50000),
+              "```"
+            ].join("\n");
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: "APK build diagnostics - " + context.sha.slice(0, 7),
+              body
+            });
 
       - name: Copy APK to repository download folder
         run: |
