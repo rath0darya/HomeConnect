@@ -30,7 +30,7 @@ jobs:
 
       - name: Build release APK
         working-directory: android
-        run: gradle :app:assembleRelease --no-daemon --stacktrace
+        run: gradle :app:assembleRelease --no-daemon --stacktrace --info
 
       - name: Copy APK to repository download folder
         run: |
