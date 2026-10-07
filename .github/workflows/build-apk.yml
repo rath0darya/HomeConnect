@@ -74,7 +74,9 @@ jobs:
       - name: Copy APK to repository download folder
         run: |
           mkdir -p download
-          cp android/app/build/outputs/apk/release/app-release.apk download/HomeConnect.apk
+          APK_PATH="$(find android/app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -n 1)"
+          test -n "$APK_PATH"
+          cp "$APK_PATH" download/HomeConnect.apk
           sha256sum download/HomeConnect.apk > download/HomeConnect.apk.sha256
 
       - name: Commit APK into repository
