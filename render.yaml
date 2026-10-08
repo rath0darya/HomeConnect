@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: homeconnect
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: ADMIN_PASSWORD_HASH
+        sync: false
+      - key: FAMILY_PASSWORD_HASH
+        sync: false
+      - key: CLOUDFLARE_TURN_KEY_ID
+        sync: false
+      - key: CLOUDFLARE_TURN_API_TOKEN
+        sync: false
