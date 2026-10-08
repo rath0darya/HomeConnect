@@ -1,4 +1,4 @@
-const CACHE = "homeconnect-internet-v2";
+const CACHE = "homeconnect-internet-v3";
 const ASSETS = ["./","./index.html","./style.css","./app.js","./config.js","./manifest.webmanifest","./icon.svg"];
 
 self.addEventListener("install", event => event.waitUntil(
