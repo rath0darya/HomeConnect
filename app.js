@@ -19,7 +19,7 @@
 
   let role = null, accessToken = null, socket = null, stream = null, pc = null;
   let remoteStream = null, toastTimer = null, callStarted = false, peerOnline = false;
-  let pendingCandidates = [];
+  let pendingCandidates = [], heartbeatTimer = null;
 
   async function sha256(value) {
     const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
@@ -66,6 +66,8 @@
     socket = new WebSocket(url);
 
     socket.onopen = () => {
+      clearInterval(heartbeatTimer);
+      heartbeatTimer = setInterval(() => sendSignal({ type: "ping" }), 20000);
       connectionLabel.textContent = "Online";
       setStatus("Internet signaling connected. Waiting for the other family member.");
       toastMessage("HomeConnect is online");
@@ -78,6 +80,8 @@
       setStatus("Internet signaling is unavailable. Open the deployed HomeConnect web service.");
     };
     socket.onclose = () => {
+      clearInterval(heartbeatTimer);
+      heartbeatTimer = null;
       connectionLabel.textContent = "Offline";
       if (!homeView.classList.contains("hidden")) setStatus("Internet signaling disconnected. Reconnecting…");
       setTimeout(() => { if (accessToken && !homeView.classList.contains("hidden")) connectSignaling(); }, 1800);
@@ -281,6 +285,7 @@
 
   function lockApp() {
     endCall(true);
+    clearInterval(heartbeatTimer); heartbeatTimer = null;
     socket?.close(); socket = null; accessToken = null; role = null; peerOnline = false;
     showLogin(); loginError.textContent = ""; passwordInput.value = ""; toastMessage("HomeConnect locked");
   }
