@@ -244,7 +244,7 @@
       return;
     }
     if (message.type === "offer") {
-      if (!incomingCall) return;
+      if (!incomingCall && !callStarted) return;
       await acceptOffer(message.description);
       return;
     }
