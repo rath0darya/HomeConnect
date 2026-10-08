@@ -205,9 +205,15 @@
       peerBadge.textContent = peerOnline ? "Family online" : "Waiting for family";
       return;
     }
+    if (message.type === "peer-state") {
+      peerOnline = Number(message.peerCount) >= 2;
+      peerBadge.textContent = peerOnline ? "Family online" : "Waiting for family";
+      setStatus(peerOnline ? "Both family members are online. You can ring them." : "Waiting for the other family member to open HomeConnect.");
+      return;
+    }
     if (message.type === "peer-joined") {
       peerOnline = true; peerBadge.textContent = "Family online";
-      setStatus("Both family members are online. You can start an Internet call.");
+      setStatus("Both family members are online. You can ring them.");
       return;
     }
     if (message.type === "peer-left") {
