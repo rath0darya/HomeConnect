@@ -14,7 +14,25 @@ const ACCESS_HASHES = new Set([
 ]);
 
 const peers = new Map();
+const familyLinks = new Map();
 let activeRing = null;
+
+function createFamilyCode() {
+  let code;
+  do {
+    code = String(crypto.randomInt(100000, 1000000));
+  } while (familyLinks.has(code));
+  familyLinks.set(code, { createdAt: new Date().toISOString() });
+  return code;
+}
+
+function maskCode(code) {
+  return typeof code === "string" ? code.slice(0, 2) + "****" : "unknown";
+}
+
+function familyPeers(code) {
+  return [...peers.values()].filter((peer) => peer.code === code);
+}
 
 function logEvent(event, details = {}) {
   console.log(new Date().toISOString() + " [CALL] " + event + (Object.keys(details).length ? " " + JSON.stringify(details) : ""));
@@ -118,6 +136,17 @@ const server = http.createServer(async (req, res) => {
       });
     }
 
+    if (req.method === "POST" && url.pathname === "/api/family/create") {
+      const auth = req.headers.authorization || "";
+      const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
+      if (!validToken(token) || token !== (process.env.ADMIN_PASSWORD_HASH || "327179bea9bc971a7b5c6e3dd92bc6da5b63de0250b99f78ab36f263e272dc2b")) {
+        return json(res, 401, { error: "Admin authorization required" });
+      }
+      const code = createFamilyCode();
+      logEvent("FAMILY_CREATED", { code: maskCode(code) });
+      return json(res, 200, { ok: true, code });
+    }
+
     if (req.method === "GET" && url.pathname === "/api/turn") {
       const auth = req.headers.authorization || "";
       const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
@@ -151,24 +180,43 @@ wss.on("connection", (ws, request) => {
   const url = new URL(request.url, "http://localhost");
   const token = url.searchParams.get("token");
   const role = url.searchParams.get("role") === "admin" ? "admin" : "family";
+  const code = url.searchParams.get("code") || "";
 
   if (!validToken(token)) {
     ws.close(1008, "Unauthorized");
     return;
   }
 
-  if (peers.size >= MAX_PEERS) {
-    ws.close(1013, "HomeConnect is already in use");
+  if (!/^[0-9]{6}$/.test(code) || !familyLinks.has(code)) {
+    logEvent("JOIN_REJECTED", { role, code: maskCode(code), reason: "invalid-family-code" });
+    ws.close(1008, "Invalid family joining code");
+    return;
+  }
+
+  const existing = familyPeers(code);
+  if (existing.some((peer) => peer.role === role)) {
+    logEvent("JOIN_REJECTED", { role, code: maskCode(code), reason: "same-role-already-connected" });
+    ws.close(1008, "This family member is already connected");
+    return;
+  }
+
+  if (existing.length >= MAX_PEERS) {
+    logEvent("JOIN_REJECTED", { role, code: maskCode(code), reason: "family-full" });
+    ws.close(1013, "Family is already connected");
     return;
   }
 
   const id = crypto.randomUUID();
-  const peer = { id, ws, role, connectedAt: new Date().toISOString() };
+  const peer = { id, ws, role, code, connectedAt: new Date().toISOString() };
   peers.set(id, peer);
-  logEvent("PEER_JOINED", { id, role, peerCount: peers.size });
+  const count = familyPeers(code).length;
+  logEvent("PEER_JOINED", { id, role, code: maskCode(code), familyPeerCount: count });
 
-  send(ws, { type: "welcome", peerCount: peers.size, role });
-  broadcast({ type: "peer-state", peerCount: peers.size }, ws);
+  send(ws, { type: "welcome", peerCount: count, role, code });
+  for (const member of familyPeers(code)) {
+    if (member.ws !== ws) send(member.ws, { type: "peer-state", peerCount: count });
+  }
+  send(ws, { type: "peer-state", peerCount: count });
 
   ws.on("message", (raw) => {
     try {
@@ -193,8 +241,9 @@ wss.on("connection", (ws, request) => {
       }
 
       if (message.type === "start-call") {
-        if (peers.size < 2) {
-          logEvent("RING_REJECTED", { from: role, reason: "peer-not-online", peerCount: peers.size });
+        const members = familyPeers(code);
+        if (members.length < 2) {
+          logEvent("RING_REJECTED", { from: role, code: maskCode(code), reason: "family-member-not-online", familyPeerCount: members.length });
           send(ws, { type: "call-error", reason: "peer-not-online" });
           return;
         }
@@ -204,29 +253,30 @@ wss.on("connection", (ws, request) => {
           return;
         }
         activeRing = { fromRole: role, startedAt: new Date().toISOString() };
-        const target = [...peers.values()].find((peer) => peer.ws !== ws);
-        logEvent("RING", { from: role, to: target?.role || "unknown", peerCount: peers.size });
+        const target = members.find((peer) => peer.ws !== ws);
+        logEvent("RING", { from: role, to: target?.role || "unknown", code: maskCode(code), familyPeerCount: members.length });
         if (target) send(target.ws, { type: "incoming-call", fromRole: role });
         return;
       }
 
       if (message.type === "accept-call" || message.type === "decline-call" || message.type === "cancel-call") {
-        logEvent(message.type.toUpperCase().replace("-", "_"), { from: role, activeRing });
+        logEvent(message.type.toUpperCase().replace("-", "_"), { from: role, code: maskCode(code), activeRing });
         if (message.type !== "accept-call") activeRing = null;
-        broadcast({ type: message.type, fromRole: role }, ws);
+        for (const member of familyPeers(code)) {
+          if (member.ws !== ws) send(member.ws, { type: message.type, fromRole: role });
+        }
         return;
       }
 
       if (message.type === "hangup") activeRing = null;
-      broadcast(
-        {
+      for (const member of familyPeers(code)) {
+        if (member.ws !== ws) send(member.ws, {
           type: message.type,
           fromRole: role,
           ...(message.description ? { description: message.description } : {}),
           ...(message.candidate ? { candidate: message.candidate } : {})
-        },
-        ws
-      );
+        });
+      }
     } catch {
       send(ws, { type: "error", message: "Invalid signaling message." });
     }
@@ -235,9 +285,12 @@ wss.on("connection", (ws, request) => {
   ws.on("close", (code, reason) => {
     peers.delete(id);
     if (activeRing?.fromRole === role) activeRing = null;
-    logEvent("PEER_LEFT", { id, role, code, reason: reason?.toString() || "", peerCount: peers.size });
-    broadcast({ type: "peer-state", peerCount: peers.size });
-    broadcast({ type: "peer-left", role });
+    const count = familyPeers(code).length;
+    logEvent("PEER_LEFT", { id, role, code: maskCode(code), familyPeerCount: count, closeCode: code, reason: reason?.toString() || "" });
+    for (const member of familyPeers(code)) {
+      send(member.ws, { type: "peer-state", peerCount: count });
+      send(member.ws, { type: "peer-left", role });
+    }
   });
 
   ws.on("error", (error) => {
