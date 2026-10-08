@@ -15,6 +15,10 @@ const ACCESS_HASHES = new Set([
 
 const peers = new Map();
 
+function logEvent(event, details = {}) {
+  console.log(new Date().toISOString() + " [CALL] " + event + (Object.keys(details).length ? " " + JSON.stringify(details) : ""));
+}
+
 function validToken(token) {
   return typeof token === "string" && ACCESS_HASHES.has(token);
 }
@@ -158,8 +162,9 @@ wss.on("connection", (ws, request) => {
   }
 
   const id = crypto.randomUUID();
-  const peer = { id, ws, role };
+  const peer = { id, ws, role, connectedAt: new Date().toISOString() };
   peers.set(id, peer);
+  logEvent("PEER_JOINED", { id, role, peerCount: peers.size });
 
   send(ws, { type: "welcome", peerCount: peers.size, role });
   broadcast({ type: "peer-joined", role }, ws);
@@ -169,6 +174,9 @@ wss.on("connection", (ws, request) => {
       const message = JSON.parse(raw.toString());
       const allowed = new Set([
         "start-call",
+        "accept-call",
+        "decline-call",
+        "cancel-call",
         "offer",
         "answer",
         "ice-candidate",
@@ -183,7 +191,14 @@ wss.on("connection", (ws, request) => {
       }
 
       if (message.type === "start-call") {
+        logEvent("RING", { from: role, peerCount: peers.size });
         broadcast({ type: "incoming-call", fromRole: role }, ws);
+        return;
+      }
+
+      if (message.type === "accept-call" || message.type === "decline-call" || message.type === "cancel-call") {
+        logEvent(message.type.toUpperCase().replace("-", "_"), { from: role });
+        broadcast({ type: message.type, fromRole: role }, ws);
         return;
       }
 
@@ -201,12 +216,14 @@ wss.on("connection", (ws, request) => {
     }
   });
 
-  ws.on("close", () => {
+  ws.on("close", (code, reason) => {
     peers.delete(id);
+    logEvent("PEER_LEFT", { id, role, code, reason: reason?.toString() || "", peerCount: peers.size });
     broadcast({ type: "peer-left", role });
   });
 
-  ws.on("error", () => {
+  ws.on("error", (error) => {
+    logEvent("WEBSOCKET_ERROR", { id, role, error: error.message });
     peers.delete(id);
   });
 });
@@ -219,4 +236,5 @@ setInterval(() => {
 
 server.listen(PORT, "0.0.0.0", () => {
   console.log("HomeConnect listening on port " + PORT);
+  logEvent("SERVER_READY", { port: PORT, turnConfigured: Boolean(process.env.CLOUDFLARE_TURN_KEY_ID && process.env.CLOUDFLARE_TURN_API_TOKEN) });
 });
