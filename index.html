@@ -16,9 +16,9 @@
     <section id="loginView" class="login-view">
       <div class="login-card glass">
         <div class="brand-mark">HC</div>
-        <div class="eyebrow">PRIVATE INTERNET FAMILY SPACE</div>
+        <div class="eyebrow">PRIVATE SIP OVER WEBRTC</div>
         <h1>HomeConnect</h1>
-        <p class="muted">Secure browser calling between family members anywhere in India.</p>
+        <p class="muted">Private browser calling between the two HomeConnect SIP accounts.</p>
         <form id="loginForm" autocomplete="off">
           <label for="password">Access password</label>
           <div class="password-row">
@@ -28,7 +28,7 @@
           <button class="primary-button wide" type="submit">Continue</button>
           <p id="loginError" class="error-text" role="alert"></p>
         </form>
-        <div class="privacy-note">WebRTC • Internet calling • No Firebase • No call recording</div>
+        <div class="privacy-note">SIP over WSS • WebRTC • DTLS-SRTP • No Firebase • No joining code</div>
       </div>
     </section>
 
@@ -36,7 +36,7 @@
       <header class="topbar">
         <div class="brand">
           <div class="brand-mini">HC</div>
-          <div><strong>HomeConnect</strong><span>Internet Family</span></div>
+          <div><strong>HomeConnect</strong><span>SIP · WebRTC</span></div>
         </div>
         <div class="top-actions">
           <span class="status-pill online"><i></i><span id="connectionLabel">Connecting</span></span>
@@ -47,9 +47,9 @@
       <main class="feed">
         <section class="hero-card glass">
           <div class="hero-copy">
-            <div class="eyebrow">ANYWHERE IN INDIA</div>
+            <div class="eyebrow">PRIVATE SIP IDENTITY</div>
             <h2>Stay close.<br><span>Call anywhere.</span></h2>
-            <p>Hyderabad to Mumbai, Delhi, Bengaluru, Kerala or anywhere else — HomeConnect uses the Internet, not your local Wi-Fi.</p>
+            <p>Your HomeConnect password authenticates a fixed SIP account. No joining code or shared link is required.</p>
             <button id="heroCallButton" class="primary-button hero-button" type="button">Open Call</button>
           </div>
           <div class="avatar-orbit" aria-hidden="true">
@@ -57,22 +57,10 @@
           </div>
         </section>
 
-        <section id="familyLinkCard" class="family-link-card glass hidden">
-          <div>
-            <div class="eyebrow">PRIVATE FAMILY LINK</div>
-            <h3 id="familyLinkTitle">Family Joining Code</h3>
-            <p id="familyLinkText">Share this 6-digit code with your family member.</p>
-          </div>
-          <div class="family-code-row">
-            <strong id="familyCodeDisplay">------</strong>
-            <button id="copyFamilyCode" class="primary-button code-copy" type="button">Copy</button>
-          </div>
-        </section>
-
         <section class="profile-row">
           <div class="profile-avatar" id="myAvatar">Y</div>
-          <div class="profile-info"><strong id="myName">You</strong><span id="myRole">Family member</span></div>
-          <div id="peerBadge" class="peer-badge">Waiting for family</div>
+          <div class="profile-info"><strong id="myName">You</strong><span id="myRole">SIP account</span></div>
+          <div id="peerBadge" class="peer-badge">SIP offline</div>
         </section>
 
         <section class="section-heading">
@@ -88,8 +76,8 @@
         </section>
 
         <section class="post-card glass">
-          <div class="post-head"><div class="post-avatar">HC</div><div><strong>HomeConnect</strong><span>Private family space · Internet</span></div><button class="more-button" type="button" aria-label="More">•••</button></div>
-          <div class="post-body"><h3>Family first.</h3><p>Open the app, check who is online, and start an encrypted browser-to-browser call.</p></div>
+          <div class="post-head"><div class="post-avatar">HC</div><div><strong>HomeConnect</strong><span>Private family space · SIP/WebRTC</span></div><button class="more-button" type="button" aria-label="More">•••</button></div>
+          <div class="post-body"><h3>Family first.</h3><p>Sign in and your fixed SIP identity registers automatically. Calls use SIP signaling and WebRTC media.</p></div>
           <div class="post-actions">
             <button type="button" class="post-action" id="likeButton">♡ <span>Like</span></button>
             <button type="button" class="post-action" id="commentButton">◌ <span>Comment</span></button>
@@ -99,34 +87,34 @@
 
         <section id="callSection" class="call-card glass">
           <div class="call-card-head">
-            <div><div class="eyebrow">INTERNET CALL</div><h3>Video & microphone</h3></div>
-            <div id="qualityBadge" class="quality-badge">WEBRTC</div>
+            <div><div class="eyebrow">SIP CALL</div><h3>Audio & video</h3></div>
+            <div id="qualityBadge" class="quality-badge">SIP/WEBRTC</div>
           </div>
           <div class="video-stage">
             <video id="remoteVideo" class="remote-video" autoplay playsinline></video>
             <video id="localVideo" class="local-video" autoplay muted playsinline></video>
             <div id="remotePlaceholder" class="remote-placeholder">
               <div class="big-avatar">HC</div>
-              <strong>Waiting for family</strong>
-              <span id="callStatus">Both devices must be online</span>
+              <strong>Ready to call</strong>
+              <span id="callStatus">Waiting for SIP call</span>
             </div>
           </div>
           <div class="call-actions">
-            <button id="startCallButton" class="primary-button call-main" type="button">Ring Family</button>
+            <button id="startCallButton" class="primary-button call-main" type="button">Call Family</button>
             <button id="endCallButton" class="danger-button call-main" type="button" disabled>End</button>
           </div>
           <div class="media-actions">
             <button id="micButton" class="round-control" type="button" disabled>Mic</button>
             <button id="cameraButton" class="round-control" type="button" disabled>Cam</button>
           </div>
-          <p id="appStatus" class="status-message">Sign in to connect to the HomeConnect Internet service.</p>
+          <p id="appStatus" class="status-message">Sign in to register your SIP account.</p>
         </section>
 
         <section class="section-heading"><div><div class="eyebrow">PRIVATE BY DESIGN</div><h3>HomeConnect features</h3></div></section>
         <section class="feature-grid">
-          <article class="feature-card glass"><b>01</b><strong>Internet calling</strong><span>Works between different mobile networks, home broadband and Wi-Fi networks.</span></article>
-          <article class="feature-card glass"><b>02</b><strong>WebRTC</strong><span>Audio and video are carried by the browser's WebRTC media connection.</span></article>
-          <article class="feature-card glass"><b>03</b><strong>TURN fallback</strong><span>Uses TURN when NAT or firewall rules prevent a direct peer connection.</span></article>
+          <article class="feature-card glass"><b>01</b><strong>SIP over WSS</strong><span>Standard SIP messages travel over the browser's secure WebSocket transport.</span></article>
+          <article class="feature-card glass"><b>02</b><strong>WebRTC media</strong><span>Audio/video use the browser WebRTC stack with DTLS-SRTP encryption.</span></article>
+          <article class="feature-card glass"><b>03</b><strong>TURN fallback</strong><span>Cloudflare TURN credentials can relay media when direct ICE connectivity is blocked.</span></article>
         </section>
       </main>
 
@@ -136,10 +124,11 @@
         <button class="nav-item" type="button" id="lockNavButton"><span>⌑</span><small>Lock</small></button>
       </nav>
     </section>
+
     <div id="incomingCallDialog" class="incoming-call-dialog hidden" role="dialog" aria-modal="true" aria-labelledby="incomingCallTitle">
       <div class="incoming-call-card glass">
         <div class="incoming-ring">☎</div>
-        <div class="eyebrow">INCOMING CALL</div>
+        <div class="eyebrow">INCOMING SIP CALL</div>
         <h3 id="incomingCallTitle">Someone is calling</h3>
         <p id="incomingCallText">A family member is calling you.</p>
         <div class="incoming-call-actions">
@@ -151,6 +140,6 @@
     <div id="toast" class="toast hidden" role="status"></div>
   </div>
   <script src="config.js"></script>
-  <script src="app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
