@@ -3,6 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const { WebSocketServer } = require("ws");
+const { initDatabase, setPresence, touchPresence, getPresence, closeDatabase } = require("./database");
 
 const PORT = Number(process.env.PORT || 10000);
 const ROOT = __dirname;
@@ -14,6 +15,7 @@ const credentials = Object.freeze({ admin: ADMIN_HASH, family: FAMILY_HASH });
 const registrations = new Map();
 const calls = new Map();
 const nonces = new Map();
+let databaseReady = false;
 
 function logEvent(event, details = {}) {
   console.log(new Date().toISOString() + " [SIP] " + event + (Object.keys(details).length ? " " + JSON.stringify(details) : ""));
@@ -105,8 +107,16 @@ const server = http.createServer(async (req, res) => {
         sip: true,
         registrations: registrations.size,
         activeCalls: calls.size,
+        database: databaseReady,
         turnConfigured: Boolean(process.env.CLOUDFLARE_TURN_KEY_ID && process.env.CLOUDFLARE_TURN_API_TOKEN)
       });
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/family/status") {
+      const auth = req.headers.authorization || "";
+      const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
+      if (![ADMIN_HASH, FAMILY_HASH].includes(token)) return json(res, 401, { error: "Unauthorized" });
+      return json(res, 200, { ok: true, ...(await getPresence()) });
     }
 
     if (req.method === "GET" && url.pathname === "/api/turn") {
@@ -269,7 +279,7 @@ wss.on("connection", (ws) => {
   let username = null;
   logEvent("WS_CONNECTED");
 
-  ws.on("message", (raw) => {
+  ws.on("message", async (raw) => {
     let message;
     try {
       message = parseSip(raw);
@@ -311,6 +321,7 @@ wss.on("connection", (ws) => {
       if (expires === 0) {
         registrations.delete(requestedUser);
         username = null;
+        await setPresence(requestedUser, false);
         sendSimpleResponse(ws, message, 200, "OK");
         logEvent("UNREGISTERED", { user: requestedUser });
         return;
@@ -318,6 +329,7 @@ wss.on("connection", (ws) => {
 
       username = requestedUser;
       registrations.set(requestedUser, { ws, contact, registeredAt: Date.now() });
+      await setPresence(requestedUser, true);
       send(ws, compactResponse(message, 200, "OK", [
         "Contact: " + (contact || "<sip:" + requestedUser + "@homeconnect>"),
         "Expires: " + Math.min(expires, 600)
@@ -376,7 +388,10 @@ wss.on("connection", (ws) => {
   });
 
   ws.on("close", () => {
-    if (username && registrations.get(username)?.ws === ws) registrations.delete(username);
+    if (username && registrations.get(username)?.ws === ws) {
+      registrations.delete(username);
+      setPresence(username, false).catch((error) => logEvent("DB_ERROR", { operation: "presence_offline", user: username, error: error.message }));
+    }
     for (const [id, call] of calls) {
       if (call.a.ws === ws || call.b.ws === ws) {
         const other = call.a.ws === ws ? call.b.ws : call.a.ws;
@@ -408,12 +423,51 @@ setInterval(() => {
   for (const [id, call] of calls) if (call.createdAt < cutoff) calls.delete(id);
 }, 60000);
 
-server.listen(PORT, "0.0.0.0", () => {
-  console.log("HomeConnect SIP/WebRTC listening on port " + PORT);
-  logEvent("SERVER_READY", {
-    port: PORT,
-    transport: "SIP over WebSocket",
-    realm: SIP_REALM,
-    turnConfigured: Boolean(process.env.CLOUDFLARE_TURN_KEY_ID && process.env.CLOUDFLARE_TURN_API_TOKEN)
+async function boot() {
+  try {
+    await initDatabase();
+    databaseReady = true;
+    logEvent("DATABASE_READY", { engine: "mysql", table: "homeconnect_presence" });
+  } catch (error) {
+    databaseReady = false;
+    console.error("[MYSQL] Database initialization failed:", error.message);
+    if (process.env.MYSQL_REQUIRED === "true") process.exit(1);
+  }
+
+  setInterval(() => {
+    for (const [user, registration] of registrations) {
+      if (registration.ws.readyState === registration.ws.OPEN) {
+        touchPresence(user).catch((error) =>
+          logEvent("DB_ERROR", { operation: "presence_touch", user, error: error.message })
+        );
+      }
+    }
+  }, 30000);
+
+  server.listen(PORT, "0.0.0.0", () => {
+    console.log("HomeConnect SIP/WebRTC listening on port " + PORT);
+    logEvent("SERVER_READY", {
+      port: PORT,
+      transport: "SIP over WebSocket",
+      realm: SIP_REALM,
+      turnConfigured: Boolean(process.env.CLOUDFLARE_TURN_KEY_ID && process.env.CLOUDFLARE_TURN_API_TOKEN)
+    });
   });
+}
+
+async function shutdown() {
+  try {
+    for (const user of registrations.keys()) await setPresence(user, false);
+    await closeDatabase();
+  } finally {
+    process.exit(0);
+  }
+}
+
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);
+
+boot().catch((error) => {
+  console.error("[BOOT] Fatal startup error:", error);
+  process.exit(1);
 });
