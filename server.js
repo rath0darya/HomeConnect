@@ -14,6 +14,7 @@ const ACCESS_HASHES = new Set([
 ]);
 
 const peers = new Map();
+let activeRing = null;
 
 function logEvent(event, details = {}) {
   console.log(new Date().toISOString() + " [CALL] " + event + (Object.keys(details).length ? " " + JSON.stringify(details) : ""));
@@ -192,17 +193,31 @@ wss.on("connection", (ws, request) => {
       }
 
       if (message.type === "start-call") {
-        logEvent("RING", { from: role, peerCount: peers.size });
-        broadcast({ type: "incoming-call", fromRole: role }, ws);
+        if (peers.size < 2) {
+          logEvent("RING_REJECTED", { from: role, reason: "peer-not-online", peerCount: peers.size });
+          send(ws, { type: "call-error", reason: "peer-not-online" });
+          return;
+        }
+        if (activeRing && activeRing.fromRole !== role) {
+          logEvent("RING_REJECTED", { from: role, reason: "another-ring-active", activeFrom: activeRing.fromRole });
+          send(ws, { type: "call-error", reason: "another-ring-active" });
+          return;
+        }
+        activeRing = { fromRole: role, startedAt: new Date().toISOString() };
+        const target = [...peers.values()].find((peer) => peer.ws !== ws);
+        logEvent("RING", { from: role, to: target?.role || "unknown", peerCount: peers.size });
+        if (target) send(target.ws, { type: "incoming-call", fromRole: role });
         return;
       }
 
       if (message.type === "accept-call" || message.type === "decline-call" || message.type === "cancel-call") {
-        logEvent(message.type.toUpperCase().replace("-", "_"), { from: role });
+        logEvent(message.type.toUpperCase().replace("-", "_"), { from: role, activeRing });
+        if (message.type !== "accept-call") activeRing = null;
         broadcast({ type: message.type, fromRole: role }, ws);
         return;
       }
 
+      if (message.type === "hangup") activeRing = null;
       broadcast(
         {
           type: message.type,
@@ -219,6 +234,7 @@ wss.on("connection", (ws, request) => {
 
   ws.on("close", (code, reason) => {
     peers.delete(id);
+    if (activeRing?.fromRole === role) activeRing = null;
     logEvent("PEER_LEFT", { id, role, code, reason: reason?.toString() || "", peerCount: peers.size });
     broadcast({ type: "peer-state", peerCount: peers.size });
     broadcast({ type: "peer-left", role });
