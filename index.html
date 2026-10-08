@@ -124,6 +124,18 @@
         <button class="nav-item" type="button" id="lockNavButton"><span>⌑</span><small>Lock</small></button>
       </nav>
     </section>
+    <div id="incomingCallDialog" class="incoming-call-dialog hidden" role="dialog" aria-modal="true" aria-labelledby="incomingCallTitle">
+      <div class="incoming-call-card glass">
+        <div class="incoming-ring">☎</div>
+        <div class="eyebrow">INCOMING CALL</div>
+        <h3 id="incomingCallTitle">Someone is calling</h3>
+        <p id="incomingCallText">A family member is calling you.</p>
+        <div class="incoming-call-actions">
+          <button id="declineCallButton" class="danger-button call-main" type="button">Decline</button>
+          <button id="acceptCallButton" class="primary-button call-main" type="button">Accept</button>
+        </div>
+      </div>
+    </div>
     <div id="toast" class="toast hidden" role="status"></div>
   </div>
   <script src="config.js"></script>
