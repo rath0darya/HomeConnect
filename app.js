@@ -222,6 +222,16 @@
       setStatus("The other family member went offline.");
       return;
     }
+    if (message.type === "call-error") {
+      calling = false;
+      startCallButton.disabled = false;
+      endCallButton.disabled = true;
+      callStatus.textContent = "Call unavailable";
+      if (message.reason === "another-ring-active") setStatus("The other family member is already handling a call request.");
+      else setStatus("The other family member is not online.");
+      toastMessage(message.reason === "another-ring-active" ? "Another call request is active." : "The other family member is not online.");
+      return;
+    }
     if (message.type === "incoming-call") {
       if (callStarted || incomingCall) return;
       incomingCall = true;
