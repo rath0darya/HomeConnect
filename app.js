@@ -195,6 +195,8 @@ import {
           iceCandidatePoolSize: 4
         }
       },
+      reconnectionAttempts: 10,
+      reconnectionDelay: 3,
       logLevel: "warn",
       delegate: {
         onInvite(invitation) {
@@ -312,55 +314,44 @@ import {
       toastMessage("Start a call first.");
       return;
     }
+
     const sdh = session.sessionDescriptionHandler;
     if (!sdh?.peerConnection) {
       toastMessage("WebRTC is not ready yet.");
       return;
     }
 
-    if (!cameraEnabled) {
-      try {
-        setStatus("Requesting camera permission…");
-        const videoStream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            width: { ideal: 1280, max: 1920 },
-            height: { ideal: 720, max: 1080 },
-            frameRate: { ideal: 30, max: 30 },
-            facingMode: "user"
-          }
-        });
-        const videoTrack = videoStream.getVideoTracks()[0];
-        const sender = sdh.peerConnection.getSenders().find((item) => item.track?.kind === "video");
-        if (sender) {
-          await sender.replaceTrack(videoTrack);
-        } else {
-          sdh.peerConnection.addTrack(videoTrack, videoStream);
-        }
-        localVideo.srcObject = sdh.localMediaStream || videoStream;
-        localVideo.play().catch(() => {});
-        session.sessionDescriptionHandlerOptionsReInvite = {
-          constraints: { audio: true, video: true }
-        };
-        await session.invite();
-        cameraEnabled = true;
-        cameraButton.classList.add("active");
-        cameraButton.textContent = "Cam";
-        setStatus("Camera enabled. SIP re-INVITE is negotiating video.");
-      } catch (error) {
-        console.error(error);
-        toastMessage("Camera permission was denied.");
-        setStatus("Camera permission is required for video.");
-      }
+    const existingVideoTrack = sdh.peerConnection.getSenders()
+      .find((item) => item.track?.kind === "video")?.track;
+
+    if (existingVideoTrack) {
+      existingVideoTrack.enabled = !existingVideoTrack.enabled;
+      cameraEnabled = existingVideoTrack.enabled;
+      cameraButton.classList.toggle("active", cameraEnabled);
+      cameraButton.textContent = cameraEnabled ? "Cam" : "Camera off";
+      setStatus(cameraEnabled ? "Camera is on. Audio remains connected." : "Camera is off. Audio remains connected.");
       return;
     }
 
-    const videoTrack = sdh.peerConnection.getSenders().find((item) => item.track?.kind === "video")?.track;
-    if (videoTrack) {
-      videoTrack.enabled = false;
+    try {
+      setStatus("Requesting camera permission…");
+      session.sessionDescriptionHandlerOptionsReInvite = {
+        constraints: { audio: true, video: true },
+        offerOptions: { iceRestart: true }
+      };
+      await session.invite();
+      cameraEnabled = true;
+      cameraButton.classList.add("active");
+      cameraButton.textContent = "Cam";
+      attachSessionMedia(session);
+      setStatus("Camera enabled. SIP re-INVITE is negotiating video.");
+    } catch (error) {
+      console.error(error);
+      toastMessage("Camera permission was denied.");
+      setStatus(error?.message || "Could not enable video.");
       cameraEnabled = false;
       cameraButton.classList.remove("active");
-      cameraButton.textContent = "Camera off";
-      setStatus("Camera is off. Audio remains connected.");
+      cameraButton.textContent = "Cam";
     }
   }
 
