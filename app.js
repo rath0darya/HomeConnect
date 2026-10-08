@@ -19,7 +19,7 @@
 
   let role = null, accessToken = null, socket = null, stream = null, pc = null;
   let remoteStream = null, toastTimer = null, callStarted = false, peerOnline = false;
-  let pendingCandidates = [], heartbeatTimer = null;
+  let pendingCandidates = [], heartbeatTimer = null, incomingCall = false, calling = false;
 
   async function sha256(value) {
     const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
@@ -89,6 +89,7 @@
   }
 
   function sendSignal(message) {
+    console.log("[HomeConnect]", new Date().toISOString(), message.type, message);
     if (!socket || socket.readyState !== WebSocket.OPEN) {
       toastMessage("HomeConnect is not connected to the Internet service.");
       return false;
@@ -107,11 +108,11 @@
     try {
       stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation:true, noiseSuppression:true, autoGainControl:true },
-        video: { width:{ideal:1920,max:1920}, height:{ideal:1080,max:1080}, frameRate:{ideal:30,max:60}, facingMode:"user" }
+        video: false
       });
       localVideo.srcObject = stream;
       micButton.disabled = false; cameraButton.disabled = false;
-      micButton.classList.add("active"); cameraButton.classList.add("active");
+      micButton.classList.add("active"); cameraButton.classList.remove("active");
       return true;
     } catch (error) {
       setStatus(error?.message || "Camera or microphone permission was denied.");
@@ -159,20 +160,29 @@
 
   async function startCall() {
     if (!peerOnline) { toastMessage("The other family member is not online."); setStatus("Waiting for the other family member to open HomeConnect."); return; }
-    if (!(await ensureMedia())) return;
+    if (calling || callStarted || incomingCall) return;
+    calling = true;
+    startCallButton.disabled = true; endCallButton.disabled = false;
+    callStatus.textContent = "Ringing…";
+    setStatus("Calling the other family member. Waiting for Accept…");
+    sendSignal({ type:"start-call" });
+  }
+
+  async function beginOutgoingMediaCall() {
+    calling = false;
+    if (!(await ensureMedia())) { sendSignal({type:"cancel-call"}); return; }
     await createPeerConnection();
     callStarted = true;
-    startCallButton.disabled = true; endCallButton.disabled = false;
     remotePlaceholder.classList.remove("hidden");
-    callStatus.textContent = "Calling the other family member…";
-    setStatus("Sending call request over the Internet…");
-    sendSignal({ type:"start-call" });
+    callStatus.textContent = "Connecting…";
+    setStatus("Call accepted. Connecting audio…");
     const offer = await pc.createOffer({ offerToReceiveAudio:true, offerToReceiveVideo:true });
     await pc.setLocalDescription(offer);
     sendSignal({ type:"offer", description: pc.localDescription });
   }
 
   async function acceptOffer(description) {
+    incomingCall = false;
     if (!(await ensureMedia())) return;
     await createPeerConnection();
     callStarted = true;
@@ -207,10 +217,34 @@
       return;
     }
     if (message.type === "incoming-call") {
-      if (!callStarted) toastMessage("Incoming HomeConnect call");
+      if (callStarted || incomingCall) return;
+      incomingCall = true;
+      callStatus.textContent = "Incoming call";
+      setStatus("Incoming call. Accept or decline.");
+      showIncomingCallDialog(message.fromRole);
+      return;
+    }
+    if (message.type === "accept-call") {
+      if (calling) await beginOutgoingMediaCall();
+      return;
+    }
+    if (message.type === "decline-call") {
+      calling = false;
+      startCallButton.disabled = false; endCallButton.disabled = true;
+      callStatus.textContent = "Call declined";
+      setStatus("The other family member declined the call.");
+      toastMessage("Call declined");
+      return;
+    }
+    if (message.type === "cancel-call") {
+      incomingCall = false;
+      hideIncomingCallDialog();
+      toastMessage("Call cancelled");
+      setStatus("The incoming call was cancelled.");
       return;
     }
     if (message.type === "offer") {
+      if (!incomingCall) return;
       await acceptOffer(message.description);
       return;
     }
@@ -236,6 +270,9 @@
   async function endCall(notify = true) {
     if (notify) sendSignal({ type:"hangup" });
     callStarted = false;
+    calling = false;
+    incomingCall = false;
+    hideIncomingCallDialog();
     pendingCandidates = [];
     if (pc) { pc.ontrack = null; pc.close(); pc = null; }
     remoteStream = null;
@@ -254,6 +291,38 @@
     qualityBadge.textContent = "WEBRTC";
     setStatus(peerOnline ? "Call ended. You can start another Internet call." : "Waiting for the other family member.");
   }
+
+  function showIncomingCallDialog(fromRole) {
+    const dialog = $("incomingCallDialog");
+    if (!dialog) return;
+    $("incomingCallText").textContent = (fromRole === "admin" ? "Admin" : "Family member") + " is calling you.";
+    dialog.classList.remove("hidden");
+  }
+
+  function hideIncomingCallDialog() {
+    $("incomingCallDialog")?.classList.add("hidden");
+  }
+
+  $("acceptCallButton")?.addEventListener("click", async () => {
+    if (!incomingCall) return;
+    hideIncomingCallDialog();
+    sendSignal({ type:"accept-call" });
+    await ensureMedia();
+    await createPeerConnection();
+    callStarted = true;
+    startCallButton.disabled = true; endCallButton.disabled = false;
+    callStatus.textContent = "Joining call…";
+    setStatus("Call accepted. Waiting for audio connection…");
+  });
+
+  $("declineCallButton")?.addEventListener("click", () => {
+    if (!incomingCall) return;
+    incomingCall = false;
+    hideIncomingCallDialog();
+    sendSignal({ type:"decline-call" });
+    callStatus.textContent = "Call declined";
+    setStatus("You declined the incoming call.");
+  });
 
   loginForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -277,9 +346,31 @@
     track.enabled = !track.enabled; micButton.classList.toggle("active", track.enabled);
     micButton.textContent = track.enabled ? "Mic" : "Muted";
   });
-  cameraButton.addEventListener("click", () => {
-    const track = stream?.getVideoTracks()[0]; if (!track) return;
-    track.enabled = !track.enabled; cameraButton.classList.toggle("active", track.enabled);
+  cameraButton.addEventListener("click", async () => {
+    if (!callStarted) { toastMessage("Start or join a call first."); return; }
+    let track = stream?.getVideoTracks()[0];
+    if (!track) {
+      try {
+        const videoStream = await navigator.mediaDevices.getUserMedia({
+          video: { width:{ideal:1920,max:1920}, height:{ideal:1080,max:1080}, frameRate:{ideal:30,max:60}, facingMode:"user" }
+        });
+        track = videoStream.getVideoTracks()[0];
+        stream.addTrack(track);
+        localVideo.srcObject = stream;
+        await createPeerConnection();
+        pc.addTrack(track, stream);
+        const offer = await pc.createOffer({offerToReceiveAudio:true, offerToReceiveVideo:true});
+        await pc.setLocalDescription(offer);
+        sendSignal({type:"offer", description:pc.localDescription});
+        cameraButton.classList.add("active");
+        cameraButton.textContent = "Cam";
+      } catch (error) {
+        toastMessage("Camera permission was denied.");
+      }
+      return;
+    }
+    track.enabled = !track.enabled;
+    cameraButton.classList.toggle("active", track.enabled);
     cameraButton.textContent = track.enabled ? "Cam" : "Camera off";
   });
 
