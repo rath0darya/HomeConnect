@@ -172,6 +172,7 @@ wss.on("connection", (ws, request) => {
   ws.on("message", (raw) => {
     try {
       const message = JSON.parse(raw.toString());
+      logEvent("SIGNAL", { from: role, type: message.type });
       const allowed = new Set([
         "start-call",
         "accept-call",
