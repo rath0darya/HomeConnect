@@ -282,11 +282,11 @@ wss.on("connection", (ws, request) => {
     }
   });
 
-  ws.on("close", (code, reason) => {
+  ws.on("close", (closeCode, reason) => {
     peers.delete(id);
     if (activeRing?.fromRole === role) activeRing = null;
     const count = familyPeers(code).length;
-    logEvent("PEER_LEFT", { id, role, code: maskCode(code), familyPeerCount: count, closeCode: code, reason: reason?.toString() || "" });
+    logEvent("PEER_LEFT", { id, role, code: maskCode(code), familyPeerCount: count, closeCode, reason: reason?.toString() || "" });
     for (const member of familyPeers(code)) {
       send(member.ws, { type: "peer-state", peerCount: count });
       send(member.ws, { type: "peer-left", role });
