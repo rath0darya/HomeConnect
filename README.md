@@ -2,65 +2,74 @@
 
 HomeConnect is a private two-account family calling website using **real SIP over WebSocket (WSS) for signaling and WebRTC for encrypted media**.
 
-## How it works
+## MySQL backend persistence
 
-HomeConnect now uses two fixed SIP identities:
+MySQL is used only for minimal family connection/presence state.
 
-- `sip:admin@<your-homeconnect-domain>`
-- `sip:family@<your-homeconnect-domain>`
+Stored:
+- fixed account online/offline state
+- SIP registration timestamp
+- last presence heartbeat
 
-There is **no Family Joining Code**.
+Not stored:
+- audio/video
+- call recordings
+- WebRTC media
+- SIP message history
+- call history
+- chat/messages
+- joining codes
+- call content
 
-After login:
+The live SIP/WebSocket connection remains in memory. MySQL cannot keep a browser WebSocket alive across a Node restart; browsers reconnect and register again.
 
-1. The browser creates a SIP.js User Agent.
-2. It connects to `/sip` using the standardized SIP WebSocket subprotocol.
-3. It authenticates and registers the user's fixed SIP account.
-4. **Call Family** sends a real SIP `INVITE`.
-5. The other browser receives the SIP `INVITE` and shows Accept/Decline.
-6. Accepting returns the SIP answer and establishes WebRTC media.
-7. Ending the call sends SIP `BYE`.
-8. Audio/video are carried by WebRTC, not by the SIP WebSocket.
+The server automatically creates one small `homeconnect_presence` table.
 
-SIP.js is used as the browser SIP/WebRTC stack. The current SIP.js release is 0.21.2. SIP.js documents SIP over WebSocket and WebRTC calling, and its full API exposes `Inviter`, `Invitation`, `Registerer`, and WebRTC Session Description Handling. citeturn1search0turn8search0
+## Database configuration
 
-SIP over WebSocket uses the standardized WebSocket subprotocol `sip` defined by RFC 7118. citeturn4search1
+Preferred:
 
-## Relationship to Blink WebRTC / Sylk
+```text
+MYSQL_URL=mysql://USER:PASSWORD@HOST:3306/DATABASE
+MYSQL_SSL=true
+MYSQL_SSL_REJECT_UNAUTHORIZED=true
+```
 
-The Google Play app you linked is **Blink WebRTC** from AG Projects. AG Projects states that Blink WebRTC uses SylkSuite to translate between WebRTC and SIP; SylkServer/SylkPushServer are used when connecting it to SIP infrastructure. citeturn0search2turn0search0
+Or:
 
-SylkServer is a SIP/XMPP/WebRTC application server and includes a SIP/WebRTC gateway, while its WebRTC conferencing backend uses Janus for SFU media. citeturn0search1turn0search10
+```text
+MYSQL_HOST=
+MYSQL_PORT=3306
+MYSQL_USER=
+MYSQL_PASSWORD=
+MYSQL_DATABASE=homeconnect
+```
 
-HomeConnect is intentionally smaller: for the two family browsers, the Node service acts as a SIP-over-WSS registrar/router, while the two browsers establish the actual WebRTC media session directly (or through TURN). This keeps the HomeConnect media path simple and avoids a mandatory media server.
+Set `MYSQL_REQUIRED=true` if MySQL must be available for startup.
 
-## Security and transport
+## SIP/WebRTC flow
 
-- SIP signaling: WSS when deployed over HTTPS.
-- SIP authentication: SIP Digest authentication using the existing access-password hashes as the SIP credential secret.
-- WebRTC media: browser WebRTC with DTLS-SRTP.
-- ICE: STUN by default; Cloudflare TURN when configured.
-- No Firebase.
-- No database.
-- No joining code.
-- No call recording.
+1. Browser logs in with the fixed family/admin password.
+2. Browser creates a SIP.js User Agent.
+3. Browser connects to `/sip`.
+4. SIP Digest authentication completes.
+5. SIP `REGISTER` succeeds.
+6. Backend updates only presence in MySQL.
+7. **Call Family** sends SIP `INVITE`.
+8. The other account receives the INVITE.
+9. Accept establishes WebRTC media.
+10. Ending the call sends SIP `BYE`.
 
-SIP Digest authentication is defined by RFC 3261/RFC 8760, and SIP.js supports authenticated User Agents. citeturn7search0turn7search6turn5search4
+There is no Family Joining Code.
 
-## Run locally
+## Run
 
 ```bash
 npm install
 npm start
 ```
 
-Open:
-
-```
-http://127.0.0.1:10000
-```
-
-For two-device Internet testing, deploy the service over public HTTPS. The browser then uses WSS for SIP and WebRTC for media.
+For Internet calling, deploy over public HTTPS so SIP uses WSS and WebRTC has a secure browser context.
 
 ## TURN
 
@@ -69,8 +78,8 @@ Configure:
 - `CLOUDFLARE_TURN_KEY_ID`
 - `CLOUDFLARE_TURN_API_TOKEN`
 
-Without TURN, HomeConnect uses STUN and some restrictive mobile/ISP networks may fail to establish media.
+Without TURN, HomeConnect falls back to STUN and some mobile/ISP networks may not establish media.
 
-## Important
+## Privacy boundary
 
-This implementation uses **real SIP messages** on the WebSocket connection. It does not tunnel the old HomeConnect JSON signaling protocol inside SIP. The old `/signal`, joining-code creation, family-code storage, and custom `offer`/`answer`/`ice-candidate` message flow have been removed.
+**MySQL is connection state only. HomeConnect does not record calls or store call/media content.**
