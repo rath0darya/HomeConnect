@@ -167,7 +167,7 @@ wss.on("connection", (ws, request) => {
   logEvent("PEER_JOINED", { id, role, peerCount: peers.size });
 
   send(ws, { type: "welcome", peerCount: peers.size, role });
-  broadcast({ type: "peer-joined", role }, ws);
+  broadcast({ type: "peer-state", peerCount: peers.size }, ws);
 
   ws.on("message", (raw) => {
     try {
@@ -220,6 +220,7 @@ wss.on("connection", (ws, request) => {
   ws.on("close", (code, reason) => {
     peers.delete(id);
     logEvent("PEER_LEFT", { id, role, code, reason: reason?.toString() || "", peerCount: peers.size });
+    broadcast({ type: "peer-state", peerCount: peers.size });
     broadcast({ type: "peer-left", role });
   });
 
