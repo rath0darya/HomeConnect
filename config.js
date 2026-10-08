@@ -1,6 +1,8 @@
 window.HOMECONNECT_CONFIG = Object.freeze({
-  mode: "static",
-  backend: false,
+  mode: "internet",
+  backend: true,
+  signalingPath: "/signal",
+  turnEndpoint: "/api/turn",
   database: false,
   firebase: false
 });
