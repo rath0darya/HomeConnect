@@ -8,6 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="mobile-web-app-capable" content="yes">
   <title>HomeConnect</title>
+  <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -15,10 +16,9 @@
     <section id="loginView" class="login-view">
       <div class="login-card glass">
         <div class="brand-mark">HC</div>
-        <div class="eyebrow">PRIVATE FAMILY SPACE</div>
+        <div class="eyebrow">PRIVATE INTERNET FAMILY SPACE</div>
         <h1>HomeConnect</h1>
-        <p class="muted">A private family space designed for phones first.</p>
-
+        <p class="muted">Secure browser calling between family members anywhere in India.</p>
         <form id="loginForm" autocomplete="off">
           <label for="password">Access password</label>
           <div class="password-row">
@@ -28,10 +28,7 @@
           <button class="primary-button wide" type="submit">Continue</button>
           <p id="loginError" class="error-text" role="alert"></p>
         </form>
-
-        <div class="privacy-note">
-          No Firebase • No database • No account signup • No advertising
-        </div>
+        <div class="privacy-note">WebRTC • Internet calling • No Firebase • No call recording</div>
       </div>
     </section>
 
@@ -39,14 +36,10 @@
       <header class="topbar">
         <div class="brand">
           <div class="brand-mini">HC</div>
-          <div>
-            <strong>HomeConnect</strong>
-            <span>Family</span>
-          </div>
+          <div><strong>HomeConnect</strong><span>Internet Family</span></div>
         </div>
-
         <div class="top-actions">
-          <span class="status-pill online"><i></i><span>Private</span></span>
+          <span class="status-pill online"><i></i><span id="connectionLabel">Connecting</span></span>
           <button id="logoutButton" class="icon-button" type="button" aria-label="Lock">⌑</button>
         </div>
       </header>
@@ -54,40 +47,28 @@
       <main class="feed">
         <section class="hero-card glass">
           <div class="hero-copy">
-            <div class="eyebrow">YOUR FAMILY SPACE</div>
-            <h2>Stay close.<br><span>Share moments.</span></h2>
-            <p>A responsive, app-style family home that feels natural on Android, iPhone and desktop.</p>
+            <div class="eyebrow">ANYWHERE IN INDIA</div>
+            <h2>Stay close.<br><span>Call anywhere.</span></h2>
+            <p>Hyderabad to Mumbai, Delhi, Bengaluru, Kerala or anywhere else — HomeConnect uses the Internet, not your local Wi-Fi.</p>
             <button id="heroCallButton" class="primary-button hero-button" type="button">Open Call</button>
           </div>
-
           <div class="avatar-orbit" aria-hidden="true">
-            <div class="orbit orbit-one"></div>
-            <div class="orbit orbit-two"></div>
-            <div class="family-avatar">HC</div>
+            <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="family-avatar">HC</div>
           </div>
         </section>
 
         <section class="profile-row">
           <div class="profile-avatar" id="myAvatar">Y</div>
-          <div class="profile-info">
-            <strong id="myName">You</strong>
-            <span id="myRole">Family member</span>
-          </div>
-          <div class="peer-badge online">Private space</div>
+          <div class="profile-info"><strong id="myName">You</strong><span id="myRole">Family member</span></div>
+          <div id="peerBadge" class="peer-badge">Waiting for family</div>
         </section>
 
         <section class="section-heading">
-          <div>
-            <div class="eyebrow">FAMILY</div>
-            <h3>Recent moments</h3>
-          </div>
-          <span class="tiny-label">Just now</span>
+          <div><div class="eyebrow">FAMILY</div><h3>Recent moments</h3></div><span class="tiny-label">Private</span>
         </section>
 
         <section class="story-strip">
-          <button class="story add-story" type="button" id="storyAdd">
-            <span>+</span><small>Add</small>
-          </button>
+          <button class="story add-story" type="button" id="storyAdd"><span>+</span><small>Add</small></button>
           <button class="story" type="button"><span class="story-avatar a1">F</span><small>Family</small></button>
           <button class="story" type="button"><span class="story-avatar a2">M</span><small>Mom</small></button>
           <button class="story" type="button"><span class="story-avatar a3">D</span><small>Dad</small></button>
@@ -95,20 +76,8 @@
         </section>
 
         <section class="post-card glass">
-          <div class="post-head">
-            <div class="post-avatar">HC</div>
-            <div>
-              <strong>HomeConnect</strong>
-              <span>Private family space · now</span>
-            </div>
-            <button class="more-button" type="button" aria-label="More">•••</button>
-          </div>
-
-          <div class="post-body">
-            <h3>Family first.</h3>
-            <p>Everything here is designed to stay simple: open the app, check in, and connect.</p>
-          </div>
-
+          <div class="post-head"><div class="post-avatar">HC</div><div><strong>HomeConnect</strong><span>Private family space · Internet</span></div><button class="more-button" type="button" aria-label="More">•••</button></div>
+          <div class="post-body"><h3>Family first.</h3><p>Open the app, check who is online, and start an encrypted browser-to-browser call.</p></div>
           <div class="post-actions">
             <button type="button" class="post-action" id="likeButton">♡ <span>Like</span></button>
             <button type="button" class="post-action" id="commentButton">◌ <span>Comment</span></button>
@@ -118,46 +87,34 @@
 
         <section id="callSection" class="call-card glass">
           <div class="call-card-head">
-            <div>
-              <div class="eyebrow">DEVICE CALL</div>
-              <h3>Camera & microphone</h3>
-            </div>
-            <div id="qualityBadge" class="quality-badge">LOCAL</div>
+            <div><div class="eyebrow">INTERNET CALL</div><h3>Video & microphone</h3></div>
+            <div id="qualityBadge" class="quality-badge">WEBRTC</div>
           </div>
-
           <div class="video-stage">
-            <video id="localVideo" class="remote-video" autoplay muted playsinline></video>
+            <video id="remoteVideo" class="remote-video" autoplay playsinline></video>
+            <video id="localVideo" class="local-video" autoplay muted playsinline></video>
             <div id="remotePlaceholder" class="remote-placeholder">
               <div class="big-avatar">HC</div>
-              <strong>HomeConnect</strong>
-              <span id="callStatus">No call session is active</span>
+              <strong>Waiting for family</strong>
+              <span id="callStatus">Both devices must be online</span>
             </div>
           </div>
-
           <div class="call-actions">
-            <button id="startCallButton" class="primary-button call-main" type="button">Start Call</button>
+            <button id="startCallButton" class="primary-button call-main" type="button">Start Internet Call</button>
             <button id="endCallButton" class="danger-button call-main" type="button" disabled>End</button>
           </div>
-
           <div class="media-actions">
             <button id="micButton" class="round-control" type="button" disabled>Mic</button>
             <button id="cameraButton" class="round-control" type="button" disabled>Cam</button>
           </div>
-
-          <p id="appStatus" class="status-message">Ready.</p>
+          <p id="appStatus" class="status-message">Sign in to connect to the HomeConnect Internet service.</p>
         </section>
 
-        <section class="section-heading">
-          <div>
-            <div class="eyebrow">PRIVATE BY DESIGN</div>
-            <h3>HomeConnect features</h3>
-          </div>
-        </section>
-
+        <section class="section-heading"><div><div class="eyebrow">PRIVATE BY DESIGN</div><h3>HomeConnect features</h3></div></section>
         <section class="feature-grid">
-          <article class="feature-card glass"><b>01</b><strong>App-like</strong><span>Responsive social-platform style layout with touch-friendly controls.</span></article>
-          <article class="feature-card glass"><b>02</b><strong>No database</strong><span>This website does not save posts, messages, media or call recordings.</span></article>
-          <article class="feature-card glass"><b>03</b><strong>Web-ready</strong><span>Works as a static website on GitHub Pages or any HTTPS static host.</span></article>
+          <article class="feature-card glass"><b>01</b><strong>Internet calling</strong><span>Works between different mobile networks, home broadband and Wi-Fi networks.</span></article>
+          <article class="feature-card glass"><b>02</b><strong>WebRTC</strong><span>Audio and video are carried by the browser's WebRTC media connection.</span></article>
+          <article class="feature-card glass"><b>03</b><strong>TURN fallback</strong><span>Uses TURN when NAT or firewall rules prevent a direct peer connection.</span></article>
         </section>
       </main>
 
@@ -167,10 +124,8 @@
         <button class="nav-item" type="button" id="lockNavButton"><span>⌑</span><small>Lock</small></button>
       </nav>
     </section>
-
     <div id="toast" class="toast hidden" role="status"></div>
   </div>
-
   <script src="config.js"></script>
   <script src="app.js"></script>
 </body>
