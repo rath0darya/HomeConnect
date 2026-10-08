@@ -15,7 +15,7 @@ const ACCESS_HASHES = new Set([
 
 const peers = new Map();
 const familyLinks = new Map();
-let activeRing = null;
+const activeRings = new Map();
 
 function createFamilyCode() {
   let code;
@@ -247,12 +247,13 @@ wss.on("connection", (ws, request) => {
           send(ws, { type: "call-error", reason: "peer-not-online" });
           return;
         }
+        const activeRing = activeRings.get(code);
         if (activeRing && activeRing.fromRole !== role) {
           logEvent("RING_REJECTED", { from: role, reason: "another-ring-active", activeFrom: activeRing.fromRole });
           send(ws, { type: "call-error", reason: "another-ring-active" });
           return;
         }
-        activeRing = { fromRole: role, startedAt: new Date().toISOString() };
+        activeRings.set(code, { fromRole: role, startedAt: new Date().toISOString() });
         const target = members.find((peer) => peer.ws !== ws);
         logEvent("RING", { from: role, to: target?.role || "unknown", code: maskCode(code), familyPeerCount: members.length });
         if (target) send(target.ws, { type: "incoming-call", fromRole: role });
@@ -260,15 +261,15 @@ wss.on("connection", (ws, request) => {
       }
 
       if (message.type === "accept-call" || message.type === "decline-call" || message.type === "cancel-call") {
-        logEvent(message.type.toUpperCase().replace("-", "_"), { from: role, code: maskCode(code), activeRing });
-        if (message.type !== "accept-call") activeRing = null;
+        logEvent(message.type.toUpperCase().replace("-", "_"), { from: role, code: maskCode(code), activeRing: activeRings.get(code) || null });
+        if (message.type !== "accept-call") activeRings.delete(code);
         for (const member of familyPeers(code)) {
           if (member.ws !== ws) send(member.ws, { type: message.type, fromRole: role });
         }
         return;
       }
 
-      if (message.type === "hangup") activeRing = null;
+      if (message.type === "hangup") activeRings.delete(code);
       for (const member of familyPeers(code)) {
         if (member.ws !== ws) send(member.ws, {
           type: message.type,
@@ -284,7 +285,7 @@ wss.on("connection", (ws, request) => {
 
   ws.on("close", (closeCode, reason) => {
     peers.delete(id);
-    if (activeRing?.fromRole === role) activeRing = null;
+    if (activeRings.get(code)?.fromRole === role) activeRings.delete(code);
     const count = familyPeers(code).length;
     logEvent("PEER_LEFT", { id, role, code: maskCode(code), familyPeerCount: count, closeCode, reason: reason?.toString() || "" });
     for (const member of familyPeers(code)) {
