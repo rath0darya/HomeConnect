@@ -9,6 +9,8 @@
 
   const loginView = $("loginView"), homeView = $("homeView"), loginForm = $("loginForm");
   const passwordInput = $("password"), showPassword = $("showPassword"), loginError = $("loginError");
+  const familyCodeInput = $("familyCode"), familyLinkCard = $("familyLinkCard");
+  const familyCodeDisplay = $("familyCodeDisplay"), familyLinkTitle = $("familyLinkTitle"), familyLinkText = $("familyLinkText");
   const myAvatar = $("myAvatar"), myName = $("myName"), myRole = $("myRole");
   const startCallButton = $("startCallButton"), endCallButton = $("endCallButton");
   const micButton = $("micButton"), cameraButton = $("cameraButton");
@@ -19,7 +21,7 @@
 
   let role = null, accessToken = null, socket = null, stream = null, pc = null;
   let remoteStream = null, toastTimer = null, callStarted = false, peerOnline = false;
-  let pendingCandidates = [], heartbeatTimer = null, incomingCall = false, calling = false;
+  let pendingCandidates = [], heartbeatTimer = null, incomingCall = false, calling = false, familyCode = "";
 
   async function sha256(value) {
     const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
@@ -39,7 +41,34 @@
   }
   function wsUrl() {
     const scheme = location.protocol === "https:" ? "wss:" : "ws:";
-    return scheme + "//" + location.host + (window.HOMECONNECT_CONFIG.signalingPath || "/signal");
+    return scheme + "//" + location.host + (window.HOMECONNECT_CONFIG.signalingPath || "/signal") +
+      "?token=" + encodeURIComponent(accessToken) +
+      "&role=" + encodeURIComponent(role) +
+      "&code=" + encodeURIComponent(familyCode);
+  }
+
+  async function createFamilyLink() {
+    const response = await fetch("/api/family/create", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + accessToken }
+    });
+    const data = await response.json();
+    if (!response.ok || !/^[0-9]{6}$/.test(data.code || "")) throw new Error(data.error || "Could not create family link.");
+    familyCode = data.code;
+    localStorage.setItem("homeconnect_family_code", familyCode);
+    familyLinkCard.classList.remove("hidden");
+    familyLinkTitle.textContent = "Family Joining Code";
+    familyLinkText.textContent = "Share this code with the family member who will join.";
+    familyCodeDisplay.textContent = familyCode;
+    return familyCode;
+  }
+
+  function showFamilyLink(code) {
+    familyCode = code;
+    familyLinkCard.classList.remove("hidden");
+    familyLinkTitle.textContent = "Family Linked";
+    familyLinkText.textContent = "You joined the private family using this code.";
+    familyCodeDisplay.textContent = code;
   }
 
   async function getIceServers() {
@@ -62,7 +91,7 @@
     if (socket && [WebSocket.OPEN, WebSocket.CONNECTING].includes(socket.readyState)) return;
     connectionLabel.textContent = "Connecting";
     setStatus("Connecting to the HomeConnect Internet service…");
-    const url = wsUrl() + "?token=" + encodeURIComponent(accessToken) + "&role=" + encodeURIComponent(role);
+    const url = wsUrl();
     socket = new WebSocket(url);
 
     socket.onopen = () => {
@@ -201,6 +230,7 @@
 
   async function handleSignal(message) {
     if (message.type === "welcome") {
+      if (message.code) familyCode = message.code;
       peerOnline = message.peerCount > 1;
       peerBadge.textContent = peerOnline ? "Family online" : "Waiting for family";
       return;
@@ -345,8 +375,34 @@
     const hash = await sha256(passwordInput.value);
     role = hash === PASSWORD_HASHES.admin ? "admin" : hash === PASSWORD_HASHES.family ? "family" : null;
     if (!role) { loginError.textContent = "Incorrect access password."; passwordInput.focus(); return; }
-    loginError.textContent = ""; accessToken = hash; passwordInput.value = "";
-    setMember(); showHome(); connectSignaling();
+
+    loginError.textContent = "";
+    accessToken = hash;
+    passwordInput.value = "";
+
+    try {
+      if (role === "admin") {
+        await createFamilyLink();
+      } else {
+        const code = familyCodeInput.value.trim();
+        if (!/^[0-9]{6}$/.test(code)) {
+          role = null; accessToken = null;
+          loginError.textContent = "Enter the 6-digit Family Joining Code from the admin.";
+          familyCodeInput.focus();
+          return;
+        }
+        familyCode = code;
+        showFamilyLink(code);
+      }
+    } catch (error) {
+      role = null; accessToken = null;
+      loginError.textContent = error?.message || "Could not create or join the family link.";
+      return;
+    }
+
+    setMember();
+    showHome();
+    connectSignaling();
   });
 
   showPassword.addEventListener("click", () => {
@@ -393,9 +449,20 @@
   function lockApp() {
     endCall(true);
     clearInterval(heartbeatTimer); heartbeatTimer = null;
-    socket?.close(); socket = null; accessToken = null; role = null; peerOnline = false;
+    socket?.close(); socket = null; accessToken = null; role = null; peerOnline = false; familyCode = "";
+    familyLinkCard.classList.add("hidden"); familyCodeDisplay.textContent = "------";
     showLogin(); loginError.textContent = ""; passwordInput.value = ""; toastMessage("HomeConnect locked");
   }
+  $("copyFamilyCode")?.addEventListener("click", async () => {
+    if (!familyCode) return;
+    try {
+      await navigator.clipboard.writeText(familyCode);
+      toastMessage("Family Joining Code copied");
+    } catch {
+      toastMessage("Joining Code: " + familyCode);
+    }
+  });
+
   $("logoutButton").addEventListener("click", lockApp);
   $("lockNavButton").addEventListener("click", lockApp);
   $("heroCallButton").addEventListener("click", () => $("callSection").scrollIntoView({behavior:"smooth",block:"center"}));
