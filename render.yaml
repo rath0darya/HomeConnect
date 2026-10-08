@@ -11,6 +11,16 @@ services:
         sync: false
       - key: FAMILY_PASSWORD_HASH
         sync: false
+      - key: SIP_REALM
+        sync: false
+      - key: MYSQL_URL
+        sync: false
+      - key: MYSQL_SSL
+        sync: false
+      - key: MYSQL_SSL_REJECT_UNAUTHORIZED
+        sync: false
+      - key: MYSQL_REQUIRED
+        sync: false
       - key: CLOUDFLARE_TURN_KEY_ID
         sync: false
       - key: CLOUDFLARE_TURN_API_TOKEN
