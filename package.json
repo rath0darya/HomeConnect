@@ -1,0 +1,16 @@
+{
+  "name": "homeconnect",
+  "version": "2.0.0",
+  "private": true,
+  "description": "HomeConnect Internet WebRTC family calling website",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20 <25"
+  },
+  "dependencies": {
+    "ws": "^8.18.3"
+  }
+}
